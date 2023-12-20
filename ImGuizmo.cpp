@@ -20,10 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "imgui.h"
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
+#include "imgui.h"
 #include "imgui_internal.h"
 #include "ImGuizmo.h"
 #if !defined(_WIN32) 
@@ -40,8 +40,8 @@ namespace ImGuizmo
    static const float ZPI = 3.14159265358979323846f;
    static const float RAD2DEG = (180.f / ZPI);
    static const float DEG2RAD = (ZPI / 180.f);
-	static float gGizmoSizeClipSpace = 0.1f;
-   const float screenRotateSize = 0.06f;
+   static float gGizmoSizeClipSpace = 0.15f;
+   const float screenRotateSize = 0.04f;
 
    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    // utility and math
@@ -684,11 +684,11 @@ namespace ImGuizmo
    static const float planeLimit = 0.2f;
 
    static const vec_t directionUnary[3] = { makeVect(1.f, 0.f, 0.f), makeVect(0.f, 1.f, 0.f), makeVect(0.f, 0.f, 1.f) };
-   static const ImU32 directionColor[3] = { 0xFF0000AA, 0xFF00AA00, 0xFFAA0000 };
+   static const ImU32 directionColor[3] = { 0xFF715ED8, 0xFF25AA25, 0xFFCC532C };
 
    // Alpha: 100%: FF, 87%: DE, 70%: B3, 54%: 8A, 50%: 80, 38%: 61, 12%: 1F
-   static const ImU32 planeColor[3] = { 0x610000AA, 0x6100AA00, 0x61AA0000 };
-   static const ImU32 selectionColor = 0x8A1080FF;
+   static const ImU32 planeColor[3] = { 0xFF7A68D8, 0xFF55AB55, 0xFFD96742 };
+   static const ImU32 selectionColor = 0xFF20AACC;
    static const ImU32 inactiveColor = 0x99999999;
    static const ImU32 translationLineColor = 0xAAAAAAAA;
    static const char* translationInfoMask[] = { "X : %5.3f", "Y : %5.3f", "Z : %5.3f",
@@ -849,7 +849,7 @@ namespace ImGuizmo
    void SetDrawlist(ImDrawList* drawlist)
    {
       gContext.mDrawList = drawlist ? drawlist : ImGui::GetWindowDrawList();
-}
+   }
 
    void BeginFrame()
    {
@@ -890,9 +890,9 @@ namespace ImGuizmo
 
    bool IsOver(OPERATION op) {
       switch (op) {
-      case SCALE:       return GetScaleType()      != NONE || IsUsing();
-      case ROTATE:      return GetRotateType()     != NONE || IsUsing();
-      case TRANSLATE:   return GetMoveType(NULL)   != NONE || IsUsing();
+      case SCALE:       return GetScaleType() != NONE || IsUsing();
+      case ROTATE:      return GetRotateType() != NONE || IsUsing();
+      case TRANSLATE:   return GetMoveType(NULL) != NONE || IsUsing();
       }
       return false;
    }
@@ -1089,7 +1089,7 @@ namespace ImGuizmo
       vec_t perpendicularVector;
       perpendicularVector.Cross(gContext.mRotationVectorSource, gContext.mTranslationPlan);
       perpendicularVector.Normalize();
-      float acosAngle = Clamp(Dot(localPos, gContext.mRotationVectorSource), -1.f, 1.f);
+      float acosAngle = Clamp(Dot(localPos, gContext.mRotationVectorSource), -0.9999f, 0.9999f);
       float angle = acosf(acosAngle);
       angle *= (Dot(localPos, perpendicularVector) < 0.f) ? 1.f : -1.f;
       return angle;
@@ -1119,11 +1119,13 @@ namespace ImGuizmo
 
       gContext.mRadiusSquareCenter = screenRotateSize * gContext.mHeight;
 
+      constexpr float circleLineThickness = 6.0f;
+      constexpr float lineThickness = 6.0f;
       for (int axis = 0; axis < 3; axis++)
       {
          ImVec2 circlePos[halfCircleSegmentCount];
 
-         float angleStart = atan2f(cameraToModelNormalized[(4 - axis) % 3], cameraToModelNormalized[(3 - axis) % 3]) + ZPI * 0.5f;
+         float angleStart = atan2f(cameraToModelNormalized[(4 - axis) % 3], cameraToModelNormalized[(3 - axis) % 3]) + ZPI * 0.5f + 0.25f;
 
          for (unsigned int i = 0; i < halfCircleSegmentCount; i++)
          {
@@ -1139,9 +1141,9 @@ namespace ImGuizmo
             gContext.mRadiusSquareCenter = radiusAxis;
          }
 
-         drawList->AddPolyline(circlePos, halfCircleSegmentCount, colors[3 - axis], false, 2);
+         drawList->AddPolyline(circlePos, halfCircleSegmentCount, colors[3 - axis], false, lineThickness);
       }
-      drawList->AddCircle(worldToPos(gContext.mModel.v.position, gContext.mViewProjection), gContext.mRadiusSquareCenter, colors[0], 64, 3.f);
+      drawList->AddCircle(worldToPos(gContext.mModel.v.position, gContext.mViewProjection), gContext.mRadiusSquareCenter * 1.1f, colors[0], 64, circleLineThickness);
 
       if (gContext.mbUsing && (gContext.mActualID == -1 || gContext.mActualID == gContext.mEditingID))
       {
@@ -1195,6 +1197,8 @@ namespace ImGuizmo
          scaleDisplay = gContext.mScale;
       }
 
+      constexpr float lineThickness = 6.0f;
+      constexpr float circleSize = 12.0f;
       for (unsigned int i = 0; i < 3; i++)
       {
          vec_t dirPlaneX, dirPlaneY, dirAxis;
@@ -1210,17 +1214,15 @@ namespace ImGuizmo
 
             if (gContext.mbUsing && (gContext.mActualID == -1 || gContext.mActualID == gContext.mEditingID))
             {
-               drawList->AddLine(baseSSpace, worldDirSSpaceNoScale, 0xFF404040, 3.f);
-               drawList->AddCircleFilled(worldDirSSpaceNoScale, 6.f, 0xFF404040);
+               drawList->AddLine(baseSSpace, worldDirSSpaceNoScale, 0xFF404040, lineThickness);
+               drawList->AddCircleFilled(worldDirSSpaceNoScale, circleSize, 0xFF404040);
             }
 
-            drawList->AddLine(baseSSpace, worldDirSSpace, colors[i + 1], 3.f);
-            drawList->AddCircleFilled(worldDirSSpace, 6.f, colors[i + 1]);
+            drawList->AddLine(baseSSpace, worldDirSSpace, colors[i + 1], lineThickness);
+            drawList->AddCircleFilled(worldDirSSpace, circleSize, colors[i + 1]);
 
-            if (gContext.mAxisFactor[i] < 0.f)
-            {
-               DrawHatchedAxis(dirAxis * scaleDisplay[i]);
-            }
+            // if (gContext.mAxisFactor[i] < 0.f)
+            //    DrawHatchedAxis(dirAxis * scaleDisplay[i]);
          }
       }
 
@@ -1265,6 +1267,8 @@ namespace ImGuizmo
       // draw
       bool belowAxisLimit = false;
       bool belowPlaneLimit = false;
+      constexpr float arrowSize = 12.0f;
+      constexpr float lineThickness = 6.0f;
       for (unsigned int i = 0; i < 3; ++i)
       {
          vec_t dirPlaneX, dirPlaneY, dirAxis;
@@ -1276,24 +1280,22 @@ namespace ImGuizmo
             ImVec2 baseSSpace = worldToPos(dirAxis * 0.1f * gContext.mScreenFactor, gContext.mMVP);
             ImVec2 worldDirSSpace = worldToPos(dirAxis * gContext.mScreenFactor, gContext.mMVP);
 
-            drawList->AddLine(baseSSpace, worldDirSSpace, colors[i + 1], 3.f);
+            drawList->AddLine(baseSSpace, worldDirSSpace, colors[i + 1], lineThickness);
 
             // Arrow head begin
             ImVec2 dir(origin - worldDirSSpace);
 
             float d = sqrtf(ImLengthSqr(dir));
             dir /= d; // Normalize
-            dir *= 6.0f;
+            dir *= arrowSize;
 
-            ImVec2 ortogonalDir(dir.y, -dir.x); // Perpendicular vector
+            ImVec2 ortogonalDir(dir.y * 0.8f, -dir.x * 0.8f); // Perpendicular vector
             ImVec2 a(worldDirSSpace + dir);
             drawList->AddTriangleFilled(worldDirSSpace - dir, a + ortogonalDir, a - ortogonalDir, colors[i + 1]);
             // Arrow head end
 
-            if (gContext.mAxisFactor[i] < 0.f)
-            {
-               DrawHatchedAxis(dirAxis);
-            }
+            //if (gContext.mAxisFactor[i] < 0.f)
+            //   DrawHatchedAxis(dirAxis);
          }
 
          // draw plane
@@ -1334,6 +1336,7 @@ namespace ImGuizmo
 
    static bool CanActivate()
    {
+      // TODO: Check for key modifiers
       if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered() && !ImGui::IsAnyItemActive())
       {
          return true;
@@ -1461,10 +1464,10 @@ namespace ImGuizmo
 
             switch (operation)
             {
-               case TRANSLATE: type = GetMoveType(&gizmoHitProportion); break;
-               case ROTATE: type = GetRotateType(); break;
-               case SCALE: type = GetScaleType(); break;
-               case BOUNDS: break;
+            case TRANSLATE: type = GetMoveType(&gizmoHitProportion); break;
+            case ROTATE: type = GetRotateType(); break;
+            case SCALE: type = GetScaleType(); break;
+            case BOUNDS: break;
             }
             if (type != NONE)
             {
@@ -1643,7 +1646,7 @@ namespace ImGuizmo
 
       vec_t deltaScreen = { io.MousePos.x - gContext.mScreenSquareCenter.x, io.MousePos.y - gContext.mScreenSquareCenter.y, 0.f, 0.f };
       float dist = deltaScreen.Length();
-      if (dist >= (gContext.mRadiusSquareCenter - 1.0f) && dist < (gContext.mRadiusSquareCenter + 1.0f))
+      if (dist >= (gContext.mRadiusSquareCenter * 1.1f - 3.0f) && dist < (gContext.mRadiusSquareCenter * 1.1f + 2.0f))
       {
          type = ROTATE_SCREEN;
       }
@@ -1670,7 +1673,7 @@ namespace ImGuizmo
          ImVec2 distanceOnScreen = idealPosOnCircleScreen - io.MousePos;
 
          float distance = makeVect(distanceOnScreen).Length();
-         if (distance < 8.f) // pixel size
+         if (distance < 10.f) // pixel size
          {
             type = ROTATE_X + i;
          }
@@ -1778,9 +1781,9 @@ namespace ImGuizmo
 
          }
 
-         if(delta != gContext.mTranslationLastDelta)
+         if (delta != gContext.mTranslationLastDelta)
          {
-             modified = true;
+            modified = true;
          }
          gContext.mTranslationLastDelta = delta;
 
@@ -1909,9 +1912,9 @@ namespace ImGuizmo
          for (int i = 0; i < 3; i++)
             gContext.mScale[i] = max(gContext.mScale[i], 0.001f);
 
-         if(gContext.mScaleLast != gContext.mScale)
+         if (gContext.mScaleLast != gContext.mScale)
          {
-             modified = true;
+            modified = true;
          }
          gContext.mScaleLast = gContext.mScale;
 
@@ -1996,9 +1999,9 @@ namespace ImGuizmo
 
          matrix_t deltaRotation;
          deltaRotation.RotationAxis(rotationAxisLocalSpace, gContext.mRotationAngle - gContext.mRotationAngleOrigin);
-         if(gContext.mRotationAngle != gContext.mRotationAngleOrigin)
+         if (gContext.mRotationAngle != gContext.mRotationAngleOrigin)
          {
-             modified = true;
+            modified = true;
          }
          gContext.mRotationAngleOrigin = gContext.mRotationAngle;
 
@@ -2157,7 +2160,7 @@ namespace ImGuizmo
 
    void SetGizmoSizeClipSpace(float value)
    {
-       gGizmoSizeClipSpace = value;
+      gGizmoSizeClipSpace = value;
    }
 
    ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2203,7 +2206,7 @@ namespace ImGuizmo
    {
       matrix_t viewInverse;
       viewInverse.Inverse(*(matrix_t*)view);
-      
+
       struct CubeFace
       {
          float z;
@@ -2289,19 +2292,19 @@ namespace ImGuizmo
                cubeFace.faceCoordsScreen[iCoord] = worldToPos(faceCoords[iCoord] * 0.5f * invert, res);
             }
             cubeFace.color = directionColor[normalIndex] | 0x808080;
-            
+
             cubeFace.z = centerPositionVP.z / centerPositionVP.w;
             cubeFaceCount++;
          }
       }
-      qsort(faces, cubeFaceCount, sizeof(CubeFace), [](void const* _a, void const* _b){
-            CubeFace* a = (CubeFace*)_a;
-            CubeFace* b = (CubeFace*)_b;
-            if (a->z < b->z)
-            {
-               return 1;
-            }
-            return -1;
+      qsort(faces, cubeFaceCount, sizeof(CubeFace), [](void const* _a, void const* _b) {
+         CubeFace* a = (CubeFace*)_a;
+         CubeFace* b = (CubeFace*)_b;
+         if (a->z < b->z)
+         {
+            return 1;
+         }
+         return -1;
          });
       // draw face with lighter color
       for (int iFace = 0; iFace < cubeFaceCount; iFace++)
@@ -2317,7 +2320,7 @@ namespace ImGuizmo
       vec_t frustum[6];
       ComputeFrustumPlanes(frustum, viewProjection.m16);
       matrix_t res = *(matrix_t*)matrix * viewProjection;
-         
+
       for (float f = -gridSize; f <= gridSize; f += 1.f)
       {
          for (int dir = 0; dir < 2; dir++)
@@ -2478,7 +2481,7 @@ namespace ImGuizmo
                }
 
                const ImVec2 panelCorners[2] = { panelPosition[iPanel], panelPosition[iPanel] + panelSize[iPanel] };
-               bool insidePanel = localx > panelCorners[0].x&& localx < panelCorners[1].x && localy > panelCorners[0].y&& localy < panelCorners[1].y;
+               bool insidePanel = localx > panelCorners[0].x && localx < panelCorners[1].x && localy > panelCorners[0].y && localy < panelCorners[1].y;
                int boxCoordInt = int(boxCoord.x * 9.f + boxCoord.y * 3.f + boxCoord.z);
                assert(boxCoordInt < 27);
                boxes[boxCoordInt] |= insidePanel && (!isDraging);
@@ -2590,4 +2593,3 @@ namespace ImGuizmo
       ComputeContext(svgView.m16, svgProjection.m16, gContext.mModelSource.m16, gContext.mMode);
    }
 };
-
